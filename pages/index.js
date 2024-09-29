@@ -1,17 +1,55 @@
-import { useTheme } from 'next-themes';
-import Head from 'next/head';
-import { useState, useRef, useEffect } from 'react';
-import { SketchField, Tools } from '../react-sketch';
-import { ToolBarWrapper, ToolBar, Tool, Color } from '../components/toolbar';
-import tools from '../react-sketch/tools';
-import { GlobalHotKeys } from 'react-hotkeys';
-import { DateTime } from 'luxon';
+import { useTheme } from "next-themes";
+import Head from "next/head";
+import { useState, useRef, useEffect } from "react";
+import { SketchField, Tools } from "../react-sketch";
+import { ToolBarWrapper, ToolBar, Tool, Color } from "../components/toolbar";
+import tools from "../react-sketch/tools";
+import { GlobalHotKeys } from "react-hotkeys";
+import { DateTime } from "luxon";
 
-import { GA_TRACKING_ID } from '../lib/gtag';
-import Script from 'next/script';
+import { GA_TRACKING_ID } from "../lib/gtag";
+import Script from "next/script";
 
 const Index = () => {
-  const SSR = typeof window === 'undefined';
+  const [tapCount, setTapCount] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+
+  const handleTap = () => {
+    const now = Date.now();
+    const TAP_THRESHOLD = 200; // Max time between taps in milliseconds
+
+    if (now - lastTapTime < TAP_THRESHOLD) {
+      setTapCount((prev) => prev + 1);
+    } else {
+      setTapCount(1); // Reset count if time between taps is too long
+    }
+
+    setLastTapTime(now);
+
+    if (tapCount + 1 === 3) {
+      // Trigger triple tap event
+      console.log("Triple tap detected!");
+      setTapCount(0); // Reset tap count after triple tap is detected
+      setTool(Tools.Pencil);
+    }
+  };
+
+  const [lastTap, setLastTap] = useState(0);
+
+  const handleTouch = (e) => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+
+    if (tapLength < 200 && tapLength > 0) {
+      // If the time between taps is less than 300ms, it is considered a double-tap
+      if (tool === Tools.Pencil) setTool(Tools.Pan);
+      else setTool(Tools.Pencil);
+    }
+
+    setLastTap(currentTime);
+  };
+
+  const SSR = typeof window === "undefined";
 
   const nop = () => {};
 
@@ -20,47 +58,47 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [tool, setTool] = useState(Tools.Pencil);
   const [colors, setColors] = useState([
-    '#000001', // black
-    '#fe0000', // red
-    '#00fe00', // green
-    '#0000fe', // blue
-    '#fffffe', // white
+    "#000001", // black
+    "#fe0000", // red
+    "#00fe00", // green
+    "#0000fe", // blue
+    "#fffffe", // white
     // reds
-    '#ff8585',
-    '#ff4747',
-    '#ff0000',
-    '#cc0000',
-    '#8f0000',
+    "#ff8585",
+    "#ff4747",
+    "#ff0000",
+    "#cc0000",
+    "#8f0000",
     // oranges
-    '#ffd458',
-    '#ffbf47',
-    '#ffa500',
-    '#cc8500',
-    '#8f5d00',
+    "#ffd458",
+    "#ffbf47",
+    "#ffa500",
+    "#cc8500",
+    "#8f5d00",
     // yellows
-    '#ffff85',
-    '#ffff47',
-    '#ffff00',
-    '#cccc00',
-    '#8f8f00',
+    "#ffff85",
+    "#ffff47",
+    "#ffff00",
+    "#cccc00",
+    "#8f8f00",
     // greens
-    '#85ff85',
-    '#47ff47',
-    '#00ff00',
-    '#00cc00',
-    '#008f00',
+    "#85ff85",
+    "#47ff47",
+    "#00ff00",
+    "#00cc00",
+    "#008f00",
     // blues
-    '#8585ff',
-    '#4747ff',
-    '#0000ff',
-    '#0000cc',
-    '#00008f',
+    "#8585ff",
+    "#4747ff",
+    "#0000ff",
+    "#0000cc",
+    "#00008f",
     // purples
-    '#ff85ff',
-    '#ff47ff',
-    '#ff0aff',
-    '#cc00cc',
-    '#800080',
+    "#ff85ff",
+    "#ff47ff",
+    "#ff0aff",
+    "#cc00cc",
+    "#800080",
   ]);
   const [color, setColor] = useState(0);
   const [lineThickness, setLineThickness] = useState(2);
@@ -72,7 +110,7 @@ const Index = () => {
   useEffect(() => {
     !SSR
       ? (window.onbeforeunload = (e) =>
-          'Are you sure you want to exit? Your work will be lost.')
+          "Are you sure you want to exit? Your work will be lost.")
       : nop();
   });
 
@@ -80,43 +118,43 @@ const Index = () => {
     const dataURL = sketchContainer.current.toDataURL();
     const url = dataURL.replace(
       /^data:image\/[^;]+/,
-      'data:application/octet-stream'
+      "data:application/octet-stream"
     );
-    var link = document.createElement('a');
+    var link = document.createElement("a");
     link.setAttribute(
-      'download',
-      `iwb-${DateTime.now().toFormat('yyyy-LL-dd-HH-mm-ss')}.png`
+      "download",
+      `iwb-${DateTime.now().toFormat("yyyy-LL-dd-HH-mm-ss")}.png`
     );
-    link.setAttribute('href', url);
+    link.setAttribute("href", url);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(document.body.lastChild);
   };
 
   const keyMap = {
-    TOOL_BRUSH: 'b',
-    TOOL_TEXT: 't',
-    TOOL_PAN: 'v',
-    TOOL_SELECT: 's',
-    TOOL_REMOVE: 'r',
-    TOOL_EXPORT: 'e',
-    CLEAR: 'c',
-    LINE_THIN: '1',
-    LINE_REGULAR: '2',
-    LINE_THICC: '3',
-    LINE_CHONKY: '4',
-    UNDO: ['ctrl+z', 'command+z'],
-    REDO: ['ctrl+shift+z', 'command+shift+z', 'ctrl+y', 'command+y'],
-    ZOOM_OUT: ['-', 'ctrl+-', 'command+-'],
-    ZOOM_IN: ['=', 'ctrl+=', 'command+='],
-    TOGGLE_DARK: ['d'],
-    DELETE_SELECTION: ['del', 'backspace'],
-    COLOR_RIGHT: ['right'],
-    COLOR_LEFT: ['left'],
-    COLOR_UP: ['up'],
-    COLOR_DOWN: ['down'],
-    TOGGLE_ZEN: ['z'],
-    ZEN_OFF: ['esc'],
+    TOOL_BRUSH: "b",
+    TOOL_TEXT: "t",
+    TOOL_PAN: "v",
+    TOOL_SELECT: "s",
+    TOOL_REMOVE: "r",
+    TOOL_EXPORT: "e",
+    CLEAR: "c",
+    LINE_THIN: "1",
+    LINE_REGULAR: "2",
+    LINE_THICC: "3",
+    LINE_CHONKY: "4",
+    UNDO: ["ctrl+z", "command+z"],
+    REDO: ["ctrl+shift+z", "command+shift+z", "ctrl+y", "command+y"],
+    ZOOM_OUT: ["-", "ctrl+-", "command+-"],
+    ZOOM_IN: ["=", "ctrl+=", "command+="],
+    TOGGLE_DARK: ["d"],
+    DELETE_SELECTION: ["del", "backspace"],
+    COLOR_RIGHT: ["right"],
+    COLOR_LEFT: ["left"],
+    COLOR_UP: ["up"],
+    COLOR_DOWN: ["down"],
+    TOGGLE_ZEN: ["z"],
+    ZEN_OFF: ["esc"],
   };
 
   const handlers = {
@@ -127,7 +165,7 @@ const Index = () => {
     TOOL_REMOVE: () => setTool(tools.Remove),
     TOOL_EXPORT: exportImage,
     CLEAR: () => {
-      confirm('Are you sure you want to clear the whiteboard?') &&
+      confirm("Are you sure you want to clear the whiteboard?") &&
         sketchContainer.current?.clear();
     },
     LINE_THIN: () => setLineThickness(2),
@@ -163,7 +201,7 @@ const Index = () => {
       sketchContainer.current._fc.isDrawingMode = prevDrawingMode;
     },
     TOGGLE_DARK: () =>
-      setTheme((theme) => (theme === 'dark' ? 'light' : 'dark')),
+      setTheme((theme) => (theme === "dark" ? "light" : "dark")),
     DELETE_SELECTION: () => sketchContainer.current?.removeSelected(),
     COLOR_RIGHT: () =>
       setColor((c) => {
@@ -204,16 +242,16 @@ const Index = () => {
       <Script
         async
         defer
-        data-website-id='c8055bef-b70b-4355-a973-28af3e97d7ed'
-        src='https://umami.queue.bot/umami.js'
+        data-website-id="c8055bef-b70b-4355-a973-28af3e97d7ed"
+        src="https://umami.queue.bot/umami.js"
       />
       <Head>
         <title>iwb | infinite whiteboard</title>
-        <meta name='og:title' content={'iwb.app'} />
-        <meta name='og:description' content={'infinite whiteboard'} />
-        <meta name='og:type' content={'website'} />
-        <meta name='og:url' content={'https://iwb.app'} />
-        <meta name='theme-color' content={'#475569'} />
+        <meta name="og:title" content={"iwb.app"} />
+        <meta name="og:description" content={"infinite whiteboard"} />
+        <meta name="og:type" content={"website"} />
+        <meta name="og:url" content={"https://iwb.app"} />
+        <meta name="theme-color" content={"#475569"} />
         {/* <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`} />
                 <script dangerouslySetInnerHTML={{
                     __html: `
@@ -230,9 +268,13 @@ const Index = () => {
                 /> */}
       </Head>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} />
-      <div id='dark-mode-toggle' className={theme === 'dark' ? 'dark' : ''}>
+      <div id="dark-mode-toggle" className={theme === "dark" ? "dark" : ""}>
         {/* WHITEBOARD */}
-        <div className={'w-full h-screen -z-10 absolute'}>
+        <div
+          className={"w-full h-screen -z-10 absolute"}
+          // onTouchEnd={handleTap}
+          onTouchEnd={handleTouch}
+        >
           {!SSR ? (
             <SketchField
               ref={sketchContainer}
@@ -243,7 +285,7 @@ const Index = () => {
               height={window.innerHeight}
               onSelectionCreated={nop}
               onSelectionUpdated={nop}
-              backgroundColor={theme === 'dark' ? '#000001' : '#fffffe'}
+              backgroundColor={theme === "dark" ? "#000001" : "#fffffe"}
             />
           ) : (
             <></>
@@ -259,7 +301,7 @@ const Index = () => {
                 x: window.innerWidth - 32 - BORDER,
                 y: BORDER,
                 width: 32,
-                height: 'auto',
+                height: "auto",
               }}
               lockAspectRatio={false}
               minHeight={32}
@@ -267,16 +309,16 @@ const Index = () => {
             >
               <ToolBar>
                 <Tool
-                  icon='moon'
+                  icon="moon"
                   onClick={() =>
-                    setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+                    setTheme((t) => (t === "dark" ? "light" : "dark"))
                   }
-                  title='Toggle dark mode (d)'
+                  title="Toggle dark mode (d)"
                 />
                 <Tool
-                  icon='cloud'
+                  icon="cloud"
                   onClick={() => setZenMode((z) => !z)}
-                  title='Toggle zen mode (z)'
+                  title="Toggle zen mode (z)"
                 />
               </ToolBar>
             </ToolBarWrapper>
@@ -286,7 +328,7 @@ const Index = () => {
               default={{
                 x: window.innerWidth - BORDER - 32,
                 y: BORDER + 32 + 32 + BORDER,
-                height: 'auto',
+                height: "auto",
                 width: 32,
               }}
               lockAspectRatio={false}
@@ -295,72 +337,72 @@ const Index = () => {
             >
               <ToolBar>
                 <Tool
-                  icon='paint-brush'
+                  icon="paint-brush"
                   onClick={() => setTool(Tools.Pencil)}
                   selected={tool === Tools.Pencil}
-                  title='Brush (b)'
+                  title="Brush (b)"
                 />
                 <Tool
-                  icon='i-cursor'
+                  icon="i-cursor"
                   onClick={() => setTool(Tools.Text)}
                   selected={tool === Tools.Text}
-                  title='Text (t)'
+                  title="Text (t)"
                 />
                 <Tool
-                  icon='arrows'
+                  icon="arrows"
                   onClick={() => setTool(Tools.Pan)}
                   selected={tool === Tools.Pan}
-                  title='Move (v)'
+                  title="Move (v)"
                 />
                 <Tool
-                  icon='hand-pointer-o'
+                  icon="hand-pointer-o"
                   onClick={() => setTool(Tools.Select)}
                   selected={tool === Tools.Select}
-                  title='Select (s)'
+                  title="Select (s)"
                 />
                 <Tool
-                  icon='trash'
+                  icon="trash"
                   onClick={() => setTool(Tools.Remove)}
                   selected={tool === Tools.Remove}
-                  title='Remove (r)'
+                  title="Remove (r)"
                 />
-                <Tool icon='image' onClick={exportImage} title='Export (e)' />
+                <Tool icon="image" onClick={exportImage} title="Export (e)" />
                 <Tool
-                  icon='bomb'
-                  className={'text-red-600'}
+                  icon="bomb"
+                  className={"text-red-600"}
                   onClick={() => {
-                    confirm('Are you sure you want to clear the whiteboard?') &&
+                    confirm("Are you sure you want to clear the whiteboard?") &&
                       sketchContainer.current.clear();
                   }}
-                  title='Clear (c)'
+                  title="Clear (c)"
                 />
                 <Tool
-                  icon='circle'
-                  style={{ fontSize: '0.8rem' }}
+                  icon="circle"
+                  style={{ fontSize: "0.8rem" }}
                   onClick={() => setLineThickness(2)}
                   selected={lineThickness === 2}
-                  title='Thin (1)'
+                  title="Thin (1)"
                 />
                 <Tool
-                  icon='circle'
-                  style={{ fontSize: '1.1rem' }}
+                  icon="circle"
+                  style={{ fontSize: "1.1rem" }}
                   onClick={() => setLineThickness(4)}
                   selected={lineThickness === 4}
-                  title='Regular (2)'
+                  title="Regular (2)"
                 />
                 <Tool
-                  icon='circle'
-                  style={{ fontSize: '1.4rem' }}
+                  icon="circle"
+                  style={{ fontSize: "1.4rem" }}
                   onClick={() => setLineThickness(10)}
                   selected={lineThickness === 10}
-                  title='Thicc (3)'
+                  title="Thicc (3)"
                 />
                 <Tool
-                  icon='circle'
-                  style={{ fontSize: '1.75rem' }}
+                  icon="circle"
+                  style={{ fontSize: "1.75rem" }}
                   onClick={() => setLineThickness(20)}
                   selected={lineThickness === 20}
-                  title='Chonky (4)'
+                  title="Chonky (4)"
                 />
               </ToolBar>
             </ToolBarWrapper>
@@ -418,32 +460,32 @@ const Index = () => {
             >
               <ToolBar>
                 <Tool
-                  icon='undo'
+                  icon="undo"
                   onClick={() => {
                     try {
                       handlers.UNDO();
                     } catch (e) {}
                   }}
-                  title='Undo'
+                  title="Undo"
                 />
                 <Tool
-                  icon='undo fa-flip-horizontal'
+                  icon="undo fa-flip-horizontal"
                   onClick={() => {
                     try {
                       handlers.REDO();
                     } catch (e) {}
                   }}
-                  title='Redo'
+                  title="Redo"
                 />
                 <Tool
-                  icon='search-plus'
+                  icon="search-plus"
                   onClick={() => handlers.ZOOM_IN()}
-                  title='Zoom In'
+                  title="Zoom In"
                 />
                 <Tool
-                  icon='search-minus'
+                  icon="search-minus"
                   onClick={() => handlers.ZOOM_OUT()}
-                  title='Zoom Out'
+                  title="Zoom Out"
                 />
               </ToolBar>
             </ToolBarWrapper>
@@ -453,68 +495,68 @@ const Index = () => {
               default={{
                 x: BORDER,
                 y: BORDER,
-                height: 'auto',
+                height: "auto",
                 width: 8 * 32,
               }}
               lockAspectRatio={false}
               minHeight={32}
               minWidth={32}
             >
-              <div className={'p-8 flex flex-col text-black dark:text-white'}>
-                <div className={'text-5xl self-center'}>
-                  <span className={'font-semibold'}>iwb</span>.app
+              <div className={"p-8 flex flex-col text-black dark:text-white"}>
+                <div className={"text-5xl self-center"}>
+                  <span className={"font-semibold"}>iwb</span>.app
                 </div>
-                <div className={'self-center'}>infinite whiteboard</div>
-                <div className={'p-4'} />
+                <div className={"self-center"}>infinite whiteboard</div>
+                <div className={"p-4"} />
                 <div>
                   Just start drawing! Tools are on the right, colors are on the
                   top.
                 </div>
-                <div className={'p-4'} />
+                <div className={"p-4"} />
                 <div>Every pane is draggable and most are resizable.</div>
-                <div className={'p-4'} />
+                <div className={"p-4"} />
                 <div>
-                  <code>d</code> - toggle <span className={'font-bold'}>d</span>
+                  <code>d</code> - toggle <span className={"font-bold"}>d</span>
                   ark mode
                 </div>
                 <div>
-                  <code>z</code> - toggle <span className={'font-bold'}>z</span>
+                  <code>z</code> - toggle <span className={"font-bold"}>z</span>
                   en mode
                 </div>
                 <div>
-                  <code>b</code> - paint<span className={'font-bold'}>b</span>
+                  <code>b</code> - paint<span className={"font-bold"}>b</span>
                   rush
                 </div>
                 <div>
-                  <code>t</code> - <span className={'font-bold'}>t</span>ext
+                  <code>t</code> - <span className={"font-bold"}>t</span>ext
                 </div>
                 <div>
-                  <code>v</code> - mo<span className={'font-bold'}>v</span>e
+                  <code>v</code> - mo<span className={"font-bold"}>v</span>e
                 </div>
                 <div>
-                  <code>s</code> - <span className={'font-bold'}>s</span>elect
+                  <code>s</code> - <span className={"font-bold"}>s</span>elect
                 </div>
                 <div>
-                  <code>r</code> - <span className={'font-bold'}>r</span>emove
+                  <code>r</code> - <span className={"font-bold"}>r</span>emove
                 </div>
                 <div>
-                  <code>e</code> - <span className={'font-bold'}>e</span>xport
+                  <code>e</code> - <span className={"font-bold"}>e</span>xport
                 </div>
                 <div>
-                  <code>c</code> - <span className={'font-bold'}>c</span>lear
+                  <code>c</code> - <span className={"font-bold"}>c</span>lear
                 </div>
                 <div>
                   <code>1-4</code> - line thickness
                 </div>
                 <div>arrow keys - color</div>
-                <div className={'p-4'} />
+                <div className={"p-4"} />
                 <div>
-                  See it on{' '}
+                  See it on{" "}
                   <a
-                    href='https://github.com/qbxt/iwb'
-                    target='_blank'
-                    rel='noreferrer'
-                    className={'underline'}
+                    href="https://github.com/qbxt/iwb"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={"underline"}
                   >
                     GitHub
                   </a>
@@ -536,7 +578,7 @@ const Index = () => {
               default={{
                 x: window.innerWidth - BORDER - 3 * 32,
                 y: BORDER,
-                height: 'auto',
+                height: "auto",
                 width: 3 * 32,
               }}
               lockAspectRatio={false}
@@ -545,41 +587,41 @@ const Index = () => {
             >
               <ToolBar>
                 <Tool
-                  icon='paint-brush'
-                  className={`${tool === Tools.Pencil ? '' : 'hidden'}`}
-                  title='Brush'
+                  icon="paint-brush"
+                  className={`${tool === Tools.Pencil ? "" : "hidden"}`}
+                  title="Brush"
                 />
                 <Tool
-                  icon='i-cursor'
-                  className={`${tool === Tools.Text ? '' : 'hidden'}`}
-                  title='Text'
+                  icon="i-cursor"
+                  className={`${tool === Tools.Text ? "" : "hidden"}`}
+                  title="Text"
                 />
                 <Tool
-                  icon='arrows'
-                  className={`${tool === Tools.Pan ? '' : 'hidden'}`}
-                  title='Move'
+                  icon="arrows"
+                  className={`${tool === Tools.Pan ? "" : "hidden"}`}
+                  title="Move"
                 />
                 <Tool
-                  icon='hand-pointer-o'
-                  className={`${tool === Tools.Select ? '' : 'hidden'}`}
-                  title='Select'
+                  icon="hand-pointer-o"
+                  className={`${tool === Tools.Select ? "" : "hidden"}`}
+                  title="Select"
                 />
                 <Tool
-                  icon='trash'
-                  className={`${tool === Tools.Remove ? '' : 'hidden'}`}
-                  title='Remove'
+                  icon="trash"
+                  className={`${tool === Tools.Remove ? "" : "hidden"}`}
+                  title="Remove"
                 />
                 {colors.map((c) => (
                   <Color
                     key={c}
                     color={c}
-                    className={`${colors[color] === c ? '' : 'hidden'}`}
+                    className={`${colors[color] === c ? "" : "hidden"}`}
                   />
                 ))}
                 <Tool
-                  icon='cloud'
+                  icon="cloud"
                   onClick={() => setZenMode((z) => !z)}
-                  title='Toggle zen mode (z)'
+                  title="Toggle zen mode (z)"
                 />
               </ToolBar>
             </ToolBarWrapper>
